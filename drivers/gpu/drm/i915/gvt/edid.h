@@ -39,9 +39,6 @@
 
 struct intel_vgpu;
 
-#define EDID_SIZE		128
-#define EDID_ADDR		0x50 /* Linux hvm EDID addr */
-
 #define GVT_AUX_NATIVE_WRITE			0x8
 #define GVT_AUX_NATIVE_READ			0x9
 #define GVT_AUX_I2C_WRITE			0x0

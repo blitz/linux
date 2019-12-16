@@ -38,8 +38,6 @@
 
 struct intel_vgpu_mm;
 
-#define INTEL_GVT_INVALID_ADDR (~0UL)
-
 struct intel_gvt_gtt_entry {
 	u64 val64;
 	int type;
