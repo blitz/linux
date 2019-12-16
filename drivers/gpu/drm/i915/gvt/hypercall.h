@@ -75,4 +75,7 @@ struct intel_gvt_mpt {
 	bool (*is_valid_gfn)(unsigned long handle, unsigned long gfn);
 };
 
+int intel_gvt_register_hypervisor(struct intel_gvt_mpt *);
+void intel_gvt_unregister_hypervisor(void);
+
 #endif /* _GVT_HYPERCALL_H_ */
