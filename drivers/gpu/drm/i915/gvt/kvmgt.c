@@ -28,10 +28,15 @@
  *    Xiaoguang Chen <xiaoguang.chen@intel.com>
  */
 
+#include <drm/drm_edid.h>
 #include <linux/init.h>
 #include <linux/device.h>
+#include <linux/dma-mapping.h>
+#include <linux/hashtable.h>
+#include <linux/io-mapping.h>
 #include <linux/mm.h>
 #include <linux/mmu_context.h>
+#include <linux/pci.h>
 #include <linux/sched/mm.h>
 #include <linux/types.h>
 #include <linux/list.h>
@@ -46,8 +51,10 @@
 
 #include <linux/nospec.h>
 
-#include "i915_drv.h"
-#include "gvt.h"
+//#include "i915_drv.h"
+//#include "gvt.h"
+#include "debug.h"
+#include "gvt_public.h"
 
 static const struct intel_gvt_ops *intel_gvt_ops;
 
@@ -217,7 +224,7 @@ err:
 static int gvt_dma_map_page(struct intel_vgpu *vgpu, unsigned long gfn,
 		dma_addr_t *dma_addr, unsigned long size)
 {
-	struct device *dev = &vgpu->gvt->dev_priv->drm.pdev->dev;
+	struct device *dev = intel_vgpu_pdev(vgpu);
 	struct page *page = NULL;
 	int ret;
 
@@ -240,7 +247,7 @@ static int gvt_dma_map_page(struct intel_vgpu *vgpu, unsigned long gfn,
 static void gvt_dma_unmap_page(struct intel_vgpu *vgpu, unsigned long gfn,
 		dma_addr_t dma_addr, unsigned long size)
 {
-	struct device *dev = &vgpu->gvt->dev_priv->drm.pdev->dev;
+	struct device *dev = intel_vgpu_pdev(vgpu);
 
 	dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
 	gvt_unpin_guest_page(vgpu, gfn, size);
@@ -627,7 +634,7 @@ static int kvmgt_set_opregion(void *p_vgpu)
 	 * one later. This one is used to expose opregion to VFIO. And the
 	 * other one created by VFIO later, is used by guest actually.
 	 */
-	base = vgpu_opregion(vgpu)->va;
+	base = intel_vgpu_opregion_va(vgpu);
 	if (!base)
 		return -ENOMEM;
 
@@ -639,7 +646,7 @@ static int kvmgt_set_opregion(void *p_vgpu)
 	ret = intel_vgpu_register_reg(vgpu,
 			PCI_VENDOR_ID_INTEL | VFIO_REGION_TYPE_PCI_VENDOR_TYPE,
 			VFIO_REGION_SUBTYPE_INTEL_IGD_OPREGION,
-			&intel_vgpu_regops_opregion, OPREGION_SIZE,
+			&intel_vgpu_regops_opregion, INTEL_GVT_OPREGION_SIZE,
 			VFIO_REGION_INFO_FLAG_READ, base);
 
 	return ret;
@@ -660,9 +667,9 @@ static int kvmgt_set_edid(void *p_vgpu, int port_num)
 	base->vfio_edid_regs.edid_offset = EDID_BLOB_OFFSET;
 	base->vfio_edid_regs.edid_max_size = EDID_SIZE;
 	base->vfio_edid_regs.edid_size = EDID_SIZE;
-	base->vfio_edid_regs.max_xres = vgpu_edid_xres(port->id);
-	base->vfio_edid_regs.max_yres = vgpu_edid_yres(port->id);
-	base->edid_blob = port->edid->edid_block;
+	base->vfio_edid_regs.max_xres = vgpu_edid_xres(port);
+	base->vfio_edid_regs.max_yres = vgpu_edid_yres(port);
+	base->edid_blob = intel_vgpu_edid_block(port);
 
 	ret = intel_vgpu_register_reg(vgpu,
 			VFIO_REGION_TYPE_GFX,
@@ -690,11 +697,11 @@ static int intel_vgpu_create(struct kobject *kobj, struct mdev_device *mdev)
 	struct intel_vgpu *vgpu = NULL;
 	struct intel_vgpu_type *type;
 	struct device *pdev;
-	void *gvt;
+	struct intel_gvt *gvt;
 	int ret;
 
 	pdev = mdev_parent_dev(mdev);
-	gvt = kdev_to_i915(pdev)->gvt;
+	gvt = intel_gvt_from_kdev(pdev);
 
 	type = intel_gvt_ops->gvt_find_vgpu_type(gvt, kobject_name(kobj));
 	if (!type) {
@@ -728,7 +735,7 @@ static int intel_vgpu_remove(struct mdev_device *mdev)
 {
 	struct intel_vgpu *vgpu = mdev_get_drvdata(mdev);
 
-	if (handle_valid(vgpu->handle))
+	if (handle_valid(intel_vgpu_handle(vgpu)))
 		return -EBUSY;
 
 	intel_gvt_ops->vgpu_destroy(vgpu);
@@ -857,7 +864,7 @@ static void __intel_vgpu_release(struct intel_vgpu *vgpu)
 	struct kvmgt_guest_info *info;
 	int ret;
 
-	if (!handle_valid(vgpu->handle))
+	if (!handle_valid(intel_vgpu_handle(vgpu)))
 		return;
 
 	if (atomic_cmpxchg(&vdev->released, 0, 1))
@@ -876,13 +883,13 @@ static void __intel_vgpu_release(struct intel_vgpu *vgpu)
 	/* dereference module reference taken at open */
 	module_put(THIS_MODULE);
 
-	info = (struct kvmgt_guest_info *)vgpu->handle;
+	info = (struct kvmgt_guest_info *)intel_vgpu_handle(vgpu);
 	kvmgt_guest_exit(info);
 
 	intel_vgpu_release_msi_eventfd_ctx(vgpu);
 
 	vdev->kvm = NULL;
-	vgpu->handle = 0;
+	intel_vgpu_set_handle(vgpu, 0);
 }
 
 static void intel_vgpu_release(struct mdev_device *mdev)
@@ -902,18 +909,16 @@ static void intel_vgpu_release_work(struct work_struct *work)
 
 static u64 intel_vgpu_get_bar_addr(struct intel_vgpu *vgpu, int bar)
 {
+	u32 *barp = intel_vgpu_bar_ptr(vgpu, bar);
 	u32 start_lo, start_hi;
 	u32 mem_type;
 
-	start_lo = (*(u32 *)(vgpu->cfg_space.virtual_cfg_space + bar)) &
-			PCI_BASE_ADDRESS_MEM_MASK;
-	mem_type = (*(u32 *)(vgpu->cfg_space.virtual_cfg_space + bar)) &
-			PCI_BASE_ADDRESS_MEM_TYPE_MASK;
+	start_lo = barp[0] & PCI_BASE_ADDRESS_MEM_MASK;
+	mem_type = barp[0] & PCI_BASE_ADDRESS_MEM_TYPE_MASK;
 
 	switch (mem_type) {
 	case PCI_BASE_ADDRESS_MEM_TYPE_64:
-		start_hi = (*(u32 *)(vgpu->cfg_space.virtual_cfg_space
-						+ bar + 4));
+		start_hi = barp[1];
 		break;
 	case PCI_BASE_ADDRESS_MEM_TYPE_32:
 	case PCI_BASE_ADDRESS_MEM_TYPE_1M:
@@ -944,8 +949,8 @@ static int intel_vgpu_bar_rw(struct intel_vgpu *vgpu, int bar, u64 off,
 
 static inline bool intel_vgpu_in_aperture(struct intel_vgpu *vgpu, u64 off)
 {
-	return off >= vgpu_aperture_offset(vgpu) &&
-	       off < vgpu_aperture_offset(vgpu) + vgpu_aperture_sz(vgpu);
+	return off >= intel_vgpu_aperture_offset(vgpu) &&
+	       off < intel_vgpu_aperture_offset(vgpu) + intel_vgpu_aperture_size(vgpu);
 }
 
 static int intel_vgpu_aperture_rw(struct intel_vgpu *vgpu, u64 off,
@@ -959,7 +964,7 @@ static int intel_vgpu_aperture_rw(struct intel_vgpu *vgpu, u64 off,
 		return -EINVAL;
 	}
 
-	aperture_va = io_mapping_map_wc(&vgpu->gvt->dev_priv->ggtt.iomap,
+	aperture_va = io_mapping_map_wc(intel_gvt_gtt_iomap(vgpu),
 					ALIGN_DOWN(off, PAGE_SIZE),
 					count + offset_in_page(off));
 	if (!aperture_va)
@@ -1029,8 +1034,7 @@ static bool gtt_entry(struct mdev_device *mdev, loff_t *ppos)
 {
 	struct intel_vgpu *vgpu = mdev_get_drvdata(mdev);
 	unsigned int index = VFIO_PCI_OFFSET_TO_INDEX(*ppos);
-	struct intel_gvt *gvt = vgpu->gvt;
-	int offset;
+	u64 offset;
 
 	/* Only allow MMIO GGTT entry access */
 	if (index != PCI_BASE_ADDRESS_0)
@@ -1039,9 +1043,7 @@ static bool gtt_entry(struct mdev_device *mdev, loff_t *ppos)
 	offset = (u64)(*ppos & VFIO_PCI_OFFSET_MASK) -
 		intel_vgpu_get_bar_gpa(vgpu, PCI_BASE_ADDRESS_0);
 
-	return (offset >= gvt->device_info.gtt_start_offset &&
-		offset < gvt->device_info.gtt_start_offset + gvt_ggtt_sz(gvt)) ?
-			true : false;
+	return intel_gvt_in_gtt(vgpu, offset);
 }
 
 static ssize_t intel_vgpu_read(struct mdev_device *mdev, char __user *buf,
@@ -1219,10 +1221,10 @@ static int intel_vgpu_mmap(struct mdev_device *mdev, struct vm_area_struct *vma)
 	if (!intel_vgpu_in_aperture(vgpu, req_start))
 		return -EINVAL;
 	if (req_start + req_size >
-	    vgpu_aperture_offset(vgpu) + vgpu_aperture_sz(vgpu))
+	    intel_vgpu_aperture_offset(vgpu) + intel_vgpu_aperture_size(vgpu))
 		return -EINVAL;
 
-	pgoff = (gvt_aperture_pa_base(vgpu->gvt) >> PAGE_SHIFT) + pgoff;
+	pgoff = (intel_gvt_aperture_pa_base(vgpu) >> PAGE_SHIFT) + pgoff;
 
 	return remap_pfn_range(vma, virtaddr, pgoff, req_size, pg_prot);
 }
@@ -1326,7 +1328,7 @@ static long intel_vgpu_ioctl(struct mdev_device *mdev, unsigned int cmd,
 	struct kvmgt_vdev *vdev = kvmgt_vdev(vgpu);
 	unsigned long minsz;
 
-	gvt_dbg_core("vgpu%d ioctl, cmd: %d\n", vgpu->id, cmd);
+	gvt_dbg_core("vgpu%d ioctl, cmd: %d\n", intel_vgpu_id(vgpu), cmd);
 
 	if (cmd == VFIO_DEVICE_GET_INFO) {
 		struct vfio_device_info info;
@@ -1368,13 +1370,13 @@ static long intel_vgpu_ioctl(struct mdev_device *mdev, unsigned int cmd,
 		switch (info.index) {
 		case VFIO_PCI_CONFIG_REGION_INDEX:
 			info.offset = VFIO_PCI_INDEX_TO_OFFSET(info.index);
-			info.size = vgpu->gvt->device_info.cfg_space_size;
+			info.size = intel_gvt_cfg_space_size(vgpu);
 			info.flags = VFIO_REGION_INFO_FLAG_READ |
 				     VFIO_REGION_INFO_FLAG_WRITE;
 			break;
 		case VFIO_PCI_BAR0_REGION_INDEX:
 			info.offset = VFIO_PCI_INDEX_TO_OFFSET(info.index);
-			info.size = vgpu->cfg_space.bar[info.index].size;
+			info.size = intel_vgpu_get_bar_size(vgpu, info.index);
 			if (!info.size) {
 				info.flags = 0;
 				break;
@@ -1394,7 +1396,7 @@ static long intel_vgpu_ioctl(struct mdev_device *mdev, unsigned int cmd,
 					VFIO_REGION_INFO_FLAG_MMAP |
 					VFIO_REGION_INFO_FLAG_READ |
 					VFIO_REGION_INFO_FLAG_WRITE;
-			info.size = gvt_aperture_sz(vgpu->gvt);
+			info.size = intel_gvt_aperture_size(vgpu);
 
 			sparse = kzalloc(struct_size(sparse, areas, nr_areas),
 					 GFP_KERNEL);
@@ -1406,8 +1408,8 @@ static long intel_vgpu_ioctl(struct mdev_device *mdev, unsigned int cmd,
 			sparse->nr_areas = nr_areas;
 			cap_type_id = VFIO_REGION_INFO_CAP_SPARSE_MMAP;
 			sparse->areas[0].offset =
-					PAGE_ALIGN(vgpu_aperture_offset(vgpu));
-			sparse->areas[0].size = vgpu_aperture_sz(vgpu);
+				PAGE_ALIGN(intel_vgpu_aperture_offset(vgpu));
+			sparse->areas[0].size = intel_vgpu_aperture_size(vgpu);
 			break;
 
 		case VFIO_PCI_BAR3_REGION_INDEX ... VFIO_PCI_BAR5_REGION_INDEX:
@@ -1607,7 +1609,7 @@ vgpu_id_show(struct device *dev, struct device_attribute *attr,
 	if (mdev) {
 		struct intel_vgpu *vgpu = (struct intel_vgpu *)
 			mdev_get_drvdata(mdev);
-		return sprintf(buf, "%d\n", vgpu->id);
+		return sprintf(buf, "%d\n", intel_vgpu_id(vgpu));
 	}
 	return sprintf(buf, "\n");
 }
@@ -1621,8 +1623,7 @@ hw_id_show(struct device *dev, struct device_attribute *attr,
 	if (mdev) {
 		struct intel_vgpu *vgpu = (struct intel_vgpu *)
 			mdev_get_drvdata(mdev);
-		return sprintf(buf, "%u\n",
-			       vgpu->submission.shadow[0]->gem_context->hw_id);
+		return sprintf(buf, "%u\n", intel_vgpu_hw_id(vgpu));
 	}
 	return sprintf(buf, "\n");
 }
@@ -1780,27 +1781,21 @@ static void kvmgt_page_track_flush_slot(struct kvm *kvm,
 	spin_unlock(&kvm->mmu_lock);
 }
 
+static bool __kvmgt_has_this_kvm(struct intel_vgpu *vgpu, void *kvm)
+{
+	unsigned long handle = intel_vgpu_handle(vgpu);
+	struct kvmgt_guest_info *info;
+
+	if (!handle_valid(handle))
+		return false;
+
+	info = (struct kvmgt_guest_info *)handle;
+	return kvm && kvm == info->kvm;
+}
+
 static bool __kvmgt_vgpu_exist(struct intel_vgpu *vgpu, struct kvm *kvm)
 {
-	struct intel_vgpu *itr;
-	struct kvmgt_guest_info *info;
-	int id;
-	bool ret = false;
-
-	mutex_lock(&vgpu->gvt->lock);
-	for_each_active_vgpu(vgpu->gvt, itr, id) {
-		if (!handle_valid(itr->handle))
-			continue;
-
-		info = (struct kvmgt_guest_info *)itr->handle;
-		if (kvm && kvm == info->kvm) {
-			ret = true;
-			goto out;
-		}
-	}
-out:
-	mutex_unlock(&vgpu->gvt->lock);
-	return ret;
+	return intel_vgpu_active_find(vgpu, __kvmgt_has_this_kvm, kvm);
 }
 
 static int kvmgt_guest_init(struct mdev_device *mdev)
@@ -1811,7 +1806,7 @@ static int kvmgt_guest_init(struct mdev_device *mdev)
 	struct kvm *kvm;
 
 	vgpu = mdev_get_drvdata(mdev);
-	if (handle_valid(vgpu->handle))
+	if (handle_valid(intel_vgpu_handle(vgpu)))
 		return -EEXIST;
 
 	vdev = kvmgt_vdev(vgpu);
@@ -1828,7 +1823,7 @@ static int kvmgt_guest_init(struct mdev_device *mdev)
 	if (!info)
 		return -ENOMEM;
 
-	vgpu->handle = (unsigned long)info;
+	intel_vgpu_set_handle(vgpu, (unsigned long)info);
 	info->vgpu = vgpu;
 	info->kvm = kvm;
 	kvm_get_kvm(info->kvm);
@@ -1842,7 +1837,7 @@ static int kvmgt_guest_init(struct mdev_device *mdev)
 
 	info->debugfs_cache_entries = debugfs_create_ulong(
 						"kvmgt_nr_cache_entries",
-						0444, vgpu->debugfs,
+						0444, intel_vgpu_debugfs(vgpu),
 						&vdev->nr_cache_entries);
 	return 0;
 }
@@ -1863,13 +1858,15 @@ static bool kvmgt_guest_exit(struct kvmgt_guest_info *info)
 static int kvmgt_attach_vgpu(void *p_vgpu, unsigned long *handle)
 {
 	struct intel_vgpu *vgpu = (struct intel_vgpu *)p_vgpu;
+	struct kvmgt_vdev *vdev;
 
-	vgpu->vdev = kzalloc(sizeof(struct kvmgt_vdev), GFP_KERNEL);
+	vdev = kzalloc(sizeof(struct kvmgt_vdev), GFP_KERNEL);
 
-	if (!vgpu->vdev)
+	if (!vdev)
 		return -ENOMEM;
 
-	kvmgt_vdev(vgpu)->vgpu = vgpu;
+	vdev->vgpu = vgpu;
+	intel_vgpu_set_vdev(vgpu, vdev);
 
 	return 0;
 }
