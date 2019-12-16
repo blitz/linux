@@ -32,7 +32,7 @@ do {									\
 	if (IS_ERR_OR_NULL(vgpu))					\
 		pr_err("gvt: "fmt, ##args);			\
 	else								\
-		pr_err("gvt: vgpu %d: "fmt, vgpu->id, ##args);\
+		pr_err("gvt: vgpu %d: "fmt, intel_vgpu_id(vgpu), ##args);	\
 } while (0)
 
 #define gvt_dbg_core(fmt, args...) \

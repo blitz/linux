@@ -38,9 +38,6 @@
 #define SBI_REG_MAX	20
 #define DPCD_SIZE	0x700
 
-#define intel_vgpu_port(vgpu, port) \
-	(&(vgpu->display.ports[port]))
-
 #define intel_vgpu_has_monitor_on_port(vgpu, port) \
 	(intel_vgpu_port(vgpu, port)->edid && \
 		intel_vgpu_port(vgpu, port)->edid->data_valid)
@@ -170,30 +167,6 @@ static inline char *vgpu_edid_str(enum intel_vgpu_edid id)
 		return "1920x1200";
 	default:
 		return "";
-	}
-}
-
-static inline unsigned int vgpu_edid_xres(enum intel_vgpu_edid id)
-{
-	switch (id) {
-	case GVT_EDID_1024_768:
-		return 1024;
-	case GVT_EDID_1920_1200:
-		return 1920;
-	default:
-		return 0;
-	}
-}
-
-static inline unsigned int vgpu_edid_yres(enum intel_vgpu_edid id)
-{
-	switch (id) {
-	case GVT_EDID_1024_768:
-		return 768;
-	case GVT_EDID_1920_1200:
-		return 1200;
-	default:
-		return 0;
 	}
 }
 
