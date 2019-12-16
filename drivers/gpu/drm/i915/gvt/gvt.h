@@ -33,6 +33,7 @@
 #ifndef _GVT_H_
 #define _GVT_H_
 
+#include "gvt_public.h"
 #include "debug.h"
 #include "hypercall.h"
 #include "mmio.h"
@@ -205,11 +206,6 @@ struct intel_vgpu {
 
 	u32 scan_nonprivbb;
 };
-
-static inline void *intel_vgpu_vdev(struct intel_vgpu *vgpu)
-{
-	return vgpu->vdev;
-}
 
 /* validating GM healthy status*/
 #define vgpu_is_vm_unhealthy(ret_val) \
@@ -515,13 +511,6 @@ int intel_vgpu_emulate_cfg_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 void intel_vgpu_emulate_hotplug(struct intel_vgpu *vgpu, bool connected);
 
-static inline u64 intel_vgpu_get_bar_gpa(struct intel_vgpu *vgpu, int bar)
-{
-	/* We are 64bit bar. */
-	return (*(u64 *)(vgpu->cfg_space.virtual_cfg_space + bar)) &
-			PCI_BASE_ADDRESS_MEM_MASK;
-}
-
 void intel_vgpu_clean_opregion(struct intel_vgpu *vgpu);
 int intel_vgpu_init_opregion(struct intel_vgpu *vgpu);
 int intel_vgpu_opregion_base_write_handler(struct intel_vgpu *vgpu, u32 gpa);
@@ -531,34 +520,6 @@ void populate_pvinfo_page(struct intel_vgpu *vgpu);
 
 int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload);
 void enter_failsafe_mode(struct intel_vgpu *vgpu, int reason);
-
-struct intel_gvt_ops {
-	int (*emulate_cfg_read)(struct intel_vgpu *, unsigned int, void *,
-				unsigned int);
-	int (*emulate_cfg_write)(struct intel_vgpu *, unsigned int, void *,
-				unsigned int);
-	int (*emulate_mmio_read)(struct intel_vgpu *, u64, void *,
-				unsigned int);
-	int (*emulate_mmio_write)(struct intel_vgpu *, u64, void *,
-				unsigned int);
-	struct intel_vgpu *(*vgpu_create)(struct intel_gvt *,
-				struct intel_vgpu_type *);
-	void (*vgpu_destroy)(struct intel_vgpu *vgpu);
-	void (*vgpu_release)(struct intel_vgpu *vgpu);
-	void (*vgpu_reset)(struct intel_vgpu *);
-	void (*vgpu_activate)(struct intel_vgpu *);
-	void (*vgpu_deactivate)(struct intel_vgpu *);
-	struct intel_vgpu_type *(*gvt_find_vgpu_type)(struct intel_gvt *gvt,
-			const char *name);
-	bool (*get_gvt_attrs)(struct attribute ***type_attrs,
-			struct attribute_group ***intel_vgpu_type_groups);
-	int (*vgpu_query_plane)(struct intel_vgpu *vgpu, void *);
-	int (*vgpu_get_dmabuf)(struct intel_vgpu *vgpu, unsigned int);
-	int (*write_protect_handler)(struct intel_vgpu *, u64, void *,
-				     unsigned int);
-	void (*emulate_hotplug)(struct intel_vgpu *vgpu, bool connected);
-};
-
 
 enum {
 	GVT_FAILSAFE_UNSUPPORTED_GUEST,
