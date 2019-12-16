@@ -569,3 +569,29 @@ void intel_vgpu_reset_display(struct intel_vgpu *vgpu)
 {
 	emulate_monitor_status_change(vgpu);
 }
+
+unsigned int vgpu_edid_xres(struct intel_vgpu_port *port)
+{
+	switch (port->id) {
+	case GVT_EDID_1024_768:
+		return 1024;
+	case GVT_EDID_1920_1200:
+		return 1920;
+	default:
+		return 0;
+	}
+}
+EXPORT_SYMBOL_GPL(vgpu_edid_xres);
+
+unsigned int vgpu_edid_yres(struct intel_vgpu_port *port)
+{
+	switch (port->id) {
+	case GVT_EDID_1024_768:
+		return 768;
+	case GVT_EDID_1920_1200:
+		return 1200;
+	default:
+		return 0;
+	}
+}
+EXPORT_SYMBOL_GPL(vgpu_edid_yres);

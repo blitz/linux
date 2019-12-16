@@ -77,4 +77,7 @@ struct intel_gvt_mpt {
 
 extern struct intel_gvt_mpt xengt_mpt;
 
+int intel_gvt_register_hypervisor(struct intel_gvt_mpt *);
+void intel_gvt_unregister_hypervisor(void);
+
 #endif /* _GVT_HYPERCALL_H_ */
