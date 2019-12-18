@@ -33,9 +33,8 @@
 #ifndef _GVT_H_
 #define _GVT_H_
 
-#include "gvt_public.h"
+#include <drm/i915_gvt.h>
 #include "debug.h"
-#include "hypercall.h"
 #include "mmio.h"
 #include "reg.h"
 #include "interrupt.h"
