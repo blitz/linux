@@ -30,8 +30,12 @@
  *
  */
 
-#ifndef _GVT_HYPERCALL_H_
-#define _GVT_HYPERCALL_H_
+#ifndef _I915_GVT_HYPERCALL_H_
+#define _I915_GVT_HYPERCALL_H_
+
+#include <linux/types.h>
+
+struct device;
 
 enum hypervisor_type {
 	INTEL_GVT_HYPERVISOR_XEN = 0,
@@ -80,4 +84,4 @@ extern struct intel_gvt_mpt xengt_mpt;
 int intel_gvt_register_hypervisor(struct intel_gvt_mpt *);
 void intel_gvt_unregister_hypervisor(void);
 
-#endif /* _GVT_HYPERCALL_H_ */
+#endif /* _I915_GVT_HYPERCALL_H_ */
