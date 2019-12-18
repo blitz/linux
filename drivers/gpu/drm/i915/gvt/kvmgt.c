@@ -28,6 +28,7 @@
  *    Xiaoguang Chen <xiaoguang.chen@intel.com>
  */
 
+#include <drm/i915_gvt.h>
 #include <drm/drm_edid.h>
 #include <linux/init.h>
 #include <linux/device.h>
@@ -52,7 +53,6 @@
 #include <linux/nospec.h>
 
 #include "debug.h"
-#include "gvt_public.h"
 
 static const struct intel_gvt_ops *intel_gvt_ops;
 
