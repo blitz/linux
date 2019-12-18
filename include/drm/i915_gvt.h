@@ -21,10 +21,10 @@
  * SOFTWARE.
  */
 
-#ifndef _GVT_PUBLIC_H_
-#define _GVT_PUBLIC_H_
+#ifndef _I915_GVT_H_
+#define _I915_GVT_H_
 
-#include "hypercall.h"
+#include <drm/i915_gvt_hypercall.h>
 
 struct attribute;
 struct attribute_group;
@@ -114,4 +114,4 @@ bool intel_gvt_in_gtt(struct intel_vgpu *vgpu, u64 off);
 
 struct dentry *intel_vgpu_debugfs(struct intel_vgpu *vgpu);
 
-#endif /* _GVT_PUBLIC_H_ */
+#endif /* _I915_GVT_H_ */
