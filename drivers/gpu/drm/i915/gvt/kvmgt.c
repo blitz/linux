@@ -53,10 +53,8 @@
 
 #include <linux/nospec.h>
 
-//#include "i915_drv.h"
-//#include "gvt.h"
 #include "debug.h"
-#include "gvt_public.h"
+#include <drm/i915_gvt.h>
 
 static const struct intel_gvt_ops *intel_gvt_ops;
 
