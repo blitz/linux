@@ -382,11 +382,14 @@ typedef int (*parser_cmd_handler)(struct parser_exec_state *s);
 
 static int gvt_check_valid_cmd_length(int len, int valid_len)
 {
+	/* XXX Triggers on Win10 boot? */
+#if 0
 	if (valid_len != len) {
 		gvt_err("len is not valid:  len=%u  valid_len=%u\n",
 			len, valid_len);
 		return -EFAULT;
 	}
+#endif
 	return 0;
 }
 
@@ -963,6 +966,9 @@ static int cmd_handler_lri(struct parser_exec_state *s)
 	int i, ret = 0;
 	int cmd_len = cmd_length(s);
 	struct intel_gvt *gvt = s->vgpu->gvt;
+
+	/* XXX Triggers on Win10 boot? */
+#if 0
 	u32 valid_len = CMD_LEN(1);
 
 	/*
@@ -975,6 +981,7 @@ static int cmd_handler_lri(struct parser_exec_state *s)
 			cmd_len, valid_len);
 		return -EFAULT;
 	}
+#endif
 
 	for (i = 1; i < cmd_len; i += 2) {
 		if (IS_BROADWELL(gvt->dev_priv) && s->ring_id != RCS0) {
