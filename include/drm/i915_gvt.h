@@ -48,7 +48,7 @@ struct intel_vgpu_port;
 /* display.h */
 enum intel_vgpu_edid {
 	GVT_EDID_1024_768,
-	GVT_EDID_1920_1200,
+	GVT_EDID_1920_1080,
 	GVT_EDID_NUM,
 };
 

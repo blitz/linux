@@ -157,8 +157,8 @@ static inline char *vgpu_edid_str(enum intel_vgpu_edid id)
 	switch (id) {
 	case GVT_EDID_1024_768:
 		return "1024x768";
-	case GVT_EDID_1920_1200:
-		return "1920x1200";
+	case GVT_EDID_1920_1080:
+		return "1920x1080";
 	default:
 		return "";
 	}
