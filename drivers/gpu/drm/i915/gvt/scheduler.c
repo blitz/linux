@@ -235,9 +235,11 @@ static int shadow_context_status_change(struct notifier_block *nb,
 	unsigned long flags;
 
 	if (!is_gvt_request(req)) {
+		if (action != INTEL_CONTEXT_SCHEDULE_IN)
+			return NOTIFY_OK;
+
 		spin_lock_irqsave(&scheduler->mmio_context_lock, flags);
-		if (action == INTEL_CONTEXT_SCHEDULE_IN &&
-		    scheduler->engine_owner[ring_id]) {
+		if (scheduler->engine_owner[ring_id]) {
 			/* Switch ring from vGPU to host. */
 			intel_gvt_switch_mmio(scheduler->engine_owner[ring_id],
 					      NULL, ring_id);
