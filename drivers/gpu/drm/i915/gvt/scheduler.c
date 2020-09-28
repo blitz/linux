@@ -234,6 +234,9 @@ static int shadow_context_status_change(struct notifier_block *nb,
 	struct intel_vgpu_workload *workload;
 	unsigned long flags;
 
+	BUG_ON(req->engine->id >= ARRAY_SIZE(gvt->shadow_ctx_notifier_block));
+	BUG_ON(ring_id >= ARRAY_SIZE(scheduler->engine_owner));
+
 	if (!is_gvt_request(req)) {
 		if (action != INTEL_CONTEXT_SCHEDULE_IN)
 			return NOTIFY_OK;
