@@ -306,9 +306,12 @@ static int shadow_context_status_change(struct notifier_block *nb,
 		return NOTIFY_OK;
 	}
 
-	workload = scheduler->current_workload[ring_id];
+	if (action == INTEL_CONTEXT_SCHEDULE_OUT)
+		spin_lock_irqsave(&scheduler->cur_workload_lock, flags);
+
+	workload = READ_ONCE(scheduler->current_workload[ring_id]);
 	if (unlikely(!workload))
-		return NOTIFY_OK;
+		goto out;
 
 	switch (action) {
 	case INTEL_CONTEXT_SCHEDULE_IN:
@@ -325,6 +328,15 @@ static int shadow_context_status_change(struct notifier_block *nb,
 		atomic_set(&workload->shadow_ctx_active, 1);
 		break;
 	case INTEL_CONTEXT_SCHEDULE_OUT:
+		if (!atomic_read(&workload->shadow_ctx_active)) {
+			/* This notification was likely stale. */
+			pr_info("ignoring schedule out on inactive workload %p",
+				workload);
+
+			/* There should be no one waiting for us here. */
+			goto out;
+		}
+
 		save_ring_hw_state(workload->vgpu, rq->engine);
 		atomic_set(&workload->shadow_ctx_active, 0);
 		break;
@@ -333,9 +345,14 @@ static int shadow_context_status_change(struct notifier_block *nb,
 		break;
 	default:
 		WARN_ON(1);
-		return NOTIFY_OK;
+		goto out;
 	}
+
 	wake_up(&workload->shadow_ctx_status_wq);
+ out:
+	if (action == INTEL_CONTEXT_SCHEDULE_OUT)
+		spin_unlock_irqrestore(&scheduler->cur_workload_lock, flags);
+
 	return NOTIFY_OK;
 }
 
@@ -1069,6 +1086,7 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 	struct intel_vgpu *vgpu = workload->vgpu;
 	struct intel_vgpu_submission *s = &vgpu->submission;
 	struct i915_request *rq = workload->req;
+	unsigned long flags;
 	int event;
 
 	mutex_lock(&vgpu->vgpu_lock);
@@ -1106,10 +1124,13 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 		i915_request_put(fetch_and_zero(&workload->req));
 	}
 
+	spin_lock_irqsave(&scheduler->cur_workload_lock, flags);
 	gvt_dbg_sched("ring id %d complete workload %p status %d\n",
 			ring_id, workload, workload->status);
 
 	scheduler->current_workload[ring_id] = NULL;
+
+	spin_unlock_irqrestore(&scheduler->cur_workload_lock, flags);
 
 	list_del_init(&workload->list);
 
@@ -1262,6 +1283,7 @@ int intel_gvt_init_workload_scheduler(struct intel_gvt *gvt)
 
 	gvt_dbg_core("init workload scheduler\n");
 
+	spin_lock_init(&scheduler->cur_workload_lock);
 	init_waitqueue_head(&scheduler->workload_complete_wq);
 
 	for_each_engine(engine, gvt->gt, i) {
