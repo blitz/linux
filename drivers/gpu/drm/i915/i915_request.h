@@ -229,6 +229,9 @@ struct i915_request {
 	/** file_priv list entry for this request */
 	struct list_head client_link;
 
+	/* +1 for each sched_in, -1 for each out_out. */
+	int sched_in_out;
+
 	I915_SELFTEST_DECLARE(struct {
 		struct list_head link;
 		unsigned long delay;

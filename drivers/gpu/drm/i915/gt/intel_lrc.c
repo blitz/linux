@@ -560,6 +560,8 @@ __execlists_schedule_in(struct i915_request *rq)
 	struct intel_engine_cs * const engine = rq->engine;
 	struct intel_context * const ce = rq->hw_context;
 
+	rq->sched_in_out += 1;
+
 	intel_context_get(ce);
 
 	intel_gt_pm_get(engine->gt);
@@ -604,6 +606,10 @@ __execlists_schedule_out(struct i915_request *rq,
 			 struct intel_engine_cs * const engine)
 {
 	struct intel_context * const ce = rq->hw_context;
+
+	rq->sched_in_out -= 1;
+
+	WARN_ONCE(rq->sched_in_out & 1, "mismatched schedule in/out operations");
 
 	intel_engine_context_out(engine);
 	execlists_context_status_change(rq, INTEL_CONTEXT_SCHEDULE_OUT);
