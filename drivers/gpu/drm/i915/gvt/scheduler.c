@@ -1039,6 +1039,8 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 
 	scheduler->current_workload[ring_id] = NULL;
 
+	spin_unlock_irqrestore(&scheduler->cur_workload_lock, flags);
+
 	list_del_init(&workload->list);
 
 	if (workload->status || vgpu->resetting_eng & BIT(ring_id)) {
@@ -1065,7 +1067,6 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 
 	atomic_dec(&s->running_workload_num);
 
-	spin_unlock_irqrestore(&scheduler->cur_workload_lock, flags);
 	wake_up(&scheduler->workload_complete_wq);
 
 	if (gvt->scheduler.need_reschedule)
