@@ -144,6 +144,15 @@ config DRM_I915_PXP
 	  protected session and manage the status of the alive software session,
 	  as well as its life cycle.
 
+config DRM_I915_GVT_SLVMGT
+	tristate "Enable SLVM support for Intel GVT-g"
+	depends on DRM_I915
+	depends on DRM_I915_GVT
+	default n
+	help
+	  Choose this option if you want to enable SLVM support for
+	  Intel GVT-g.
+
 menu "drm/i915 Debugging"
 depends on DRM_I915
 depends on EXPERT
