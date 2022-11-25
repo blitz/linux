@@ -917,6 +917,12 @@ static ssize_t display_name_show(struct kobject *kobj, struct kobj_attribute *at
 	return sysfs_emit(buf, "%s\n", setting->display_name);
 }
 
+static ssize_t type_show(struct kobject *kobj, struct kobj_attribute *attr,
+		char *buf)
+{
+	return sysfs_emit(buf, "enumeration\n");
+}
+
 static ssize_t current_value_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
 	struct tlmi_attr_setting *setting = to_tlmi_attr_setting(kobj);
@@ -1034,12 +1040,15 @@ static struct kobj_attribute attr_displ_name = __ATTR_RO(display_name);
 
 static struct kobj_attribute attr_possible_values = __ATTR_RO(possible_values);
 
+static struct kobj_attribute attr_type = __ATTR_RO(type);
+
 static struct kobj_attribute attr_current_val = __ATTR_RW_MODE(current_value, 0600);
 
 static struct attribute *tlmi_attrs[] = {
 	&attr_displ_name.attr,
 	&attr_current_val.attr,
 	&attr_possible_values.attr,
+	&attr_type.attr,
 	NULL
 };
 
