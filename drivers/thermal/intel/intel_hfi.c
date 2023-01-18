@@ -209,6 +209,8 @@ static void update_capabilities(struct hfi_instance *hfi_instance)
 	if (!cpu_count)
 		goto out;
 
+        pr_info("HFI update from %d CPUs\n", cpu_count);
+
 	cpu_caps = kcalloc(cpu_count, sizeof(*cpu_caps), GFP_KERNEL);
 	if (!cpu_caps)
 		goto out;
@@ -553,6 +555,8 @@ void __init intel_hfi_init(void)
 	hfi_updates_wq = create_singlethread_workqueue("hfi-updates");
 	if (!hfi_updates_wq)
 		goto err_nomem;
+
+        pr_info("XXX HFI attached\n");
 
 	return;
 
