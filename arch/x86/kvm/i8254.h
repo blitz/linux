@@ -38,6 +38,7 @@ struct kvm_kpit_state {
 };
 
 struct kvm_pit {
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	struct kvm_io_device dev;
 	struct kvm_io_device speaker_dev;
 	struct kvm *kvm;
@@ -46,6 +47,7 @@ struct kvm_pit {
 	struct kvm_irq_mask_notifier mask_notifier;
 	struct kthread_worker *worker;
 	struct kthread_work expired;
+#endif
 };
 
 #define KVM_PIT_BASE_ADDRESS	    0x40
@@ -55,11 +57,15 @@ struct kvm_pit {
 #define KVM_MAX_PIT_INTR_INTERVAL   HZ / 100
 #define KVM_PIT_CHANNEL_MASK	    0x3
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
+
 struct kvm_pit *kvm_create_pit(struct kvm *kvm, u32 flags);
 void kvm_free_pit(struct kvm *kvm);
 
 void kvm_pit_load_count(struct kvm_pit *pit, int channel, u32 val,
 		int hpet_legacy_start);
 void kvm_pit_set_reinject(struct kvm_pit *pit, bool reinject);
+
+#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
 
 #endif

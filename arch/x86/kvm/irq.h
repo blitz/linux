@@ -100,7 +100,13 @@ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu);
 void kvm_inject_apic_timer_irqs(struct kvm_vcpu *vcpu);
 void kvm_apic_nmi_wd_deliver(struct kvm_vcpu *vcpu);
 void __kvm_migrate_apic_timer(struct kvm_vcpu *vcpu);
+
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 void __kvm_migrate_pit_timer(struct kvm_vcpu *vcpu);
+#else
+static inline void __kvm_migrate_pit_timer(struct kvm_vcpu *vcpu) {}
+#endif
+
 void __kvm_migrate_timers(struct kvm_vcpu *vcpu);
 
 int apic_has_pending_timer(struct kvm_vcpu *vcpu);

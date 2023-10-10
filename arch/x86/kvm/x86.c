@@ -6173,6 +6173,8 @@ static int kvm_vm_ioctl_set_irqchip(struct kvm *kvm, struct kvm_irqchip *chip)
 	return r;
 }
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
+
 static int kvm_vm_ioctl_get_pit(struct kvm *kvm, struct kvm_pit_state *ps)
 {
 	struct kvm_kpit_state *kps = &kvm->arch.vpit->pit_state;
@@ -6246,6 +6248,8 @@ static int kvm_vm_ioctl_reinject(struct kvm *kvm,
 
 	return 0;
 }
+
+#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
 
 void kvm_arch_sync_dirty_log(struct kvm *kvm, struct kvm_memory_slot *memslot)
 {
@@ -6769,6 +6773,7 @@ int kvm_arch_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long arg)
 	struct kvm *kvm = filp->private_data;
 	void __user *argp = (void __user *)arg;
 	int r = -ENOTTY;
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	/*
 	 * This union makes it completely explicit to gcc-3.x
 	 * that these two variables' stack usage should be
@@ -6779,6 +6784,7 @@ int kvm_arch_vm_ioctl(struct file *filp, unsigned int ioctl, unsigned long arg)
 		struct kvm_pit_state2 ps2;
 		struct kvm_pit_config pit_config;
 	} u;
+#endif
 
 	switch (ioctl) {
 	case KVM_SET_TSS_ADDR:
@@ -6837,6 +6843,7 @@ set_identity_unlock:
 		mutex_unlock(&kvm->lock);
 		break;
 	}
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	case KVM_CREATE_PIT:
 		u.pit_config.flags = KVM_PIT_SPEAKER_DUMMY;
 		goto create_pit;
@@ -6857,6 +6864,7 @@ set_identity_unlock:
 	create_pit_unlock:
 		mutex_unlock(&kvm->lock);
 		break;
+#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
 	case KVM_GET_IRQCHIP: {
 		/* 0: PIC master, 1: PIC slave, 2: IOAPIC */
 		struct kvm_irqchip *chip;
@@ -6899,6 +6907,7 @@ set_identity_unlock:
 		kfree(chip);
 		break;
 	}
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	case KVM_GET_PIT: {
 		r = -EFAULT;
 		if (copy_from_user(&u.ps, argp, sizeof(struct kvm_pit_state)))
@@ -6965,6 +6974,7 @@ set_pit2_out:
 		r = kvm_vm_ioctl_reinject(kvm, &control);
 		break;
 	}
+#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
 	case KVM_SET_BOOT_CPU_ID:
 		r = 0;
 		mutex_lock(&kvm->lock);
@@ -12396,7 +12406,9 @@ void kvm_arch_sync_events(struct kvm *kvm)
 {
 	cancel_delayed_work_sync(&kvm->arch.kvmclock_sync_work);
 	cancel_delayed_work_sync(&kvm->arch.kvmclock_update_work);
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	kvm_free_pit(kvm);
+#endif
 }
 
 /**
