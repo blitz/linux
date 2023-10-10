@@ -138,6 +138,20 @@ config KVM_XEN
 
 	  If in doubt, say "N".
 
+config KVM_LEGACY_IRQCHIP
+       bool "Support for in-kernel emulation of PIC, IOAPIC, and PIT"
+       default y
+       depends on KVM
+       help
+         Enables emulation of all interrupt controllers and the PIT timer
+         in KVM. Disabling this is only a good idea if the system is
+         expected to only run VMMs that use KVM_CAP_SPLIT_IRQCHIP.
+
+         For qemu, this means that it has to be started with:
+         -accel kvm,kernel-irqchip=split (or off)
+
+         If in doubt, say "Y".
+
 config KVM_PROVE_MMU
 	bool "Prove KVM MMU correctness"
 	depends on DEBUG_KERNEL
