@@ -27,6 +27,7 @@
 #include "x86.h"
 #include "xen.h"
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 static int kvm_set_pic_irq(struct kvm_kernel_irq_routing_entry *e,
 			   struct kvm *kvm, int irq_source_id, int level,
 			   bool line_status)
@@ -43,6 +44,7 @@ static int kvm_set_ioapic_irq(struct kvm_kernel_irq_routing_entry *e,
 	return kvm_ioapic_set_irq(ioapic, e->irqchip.pin, irq_source_id, level,
 				line_status);
 }
+#endif /* CONFIG_KVM_LEGACY_IRQCHIP */
 
 int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
 		struct kvm_lapic_irq *irq, struct dest_map *dest_map)
@@ -191,6 +193,7 @@ int kvm_arch_set_irq_inatomic(struct kvm_kernel_irq_routing_entry *e,
 	return -EWOULDBLOCK;
 }
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 int kvm_request_irq_source_id(struct kvm *kvm)
 {
 	unsigned long *bitmap = &kvm->arch.irq_sources_bitmap;
@@ -234,6 +237,7 @@ void kvm_free_irq_source_id(struct kvm *kvm, int irq_source_id)
 unlock:
 	mutex_unlock(&kvm->irq_lock);
 }
+#endif
 
 void kvm_register_irq_mask_notifier(struct kvm *kvm, int irq,
 				    struct kvm_irq_mask_notifier *kimn)
@@ -287,6 +291,7 @@ int kvm_set_routing_entry(struct kvm *kvm,
 			return -EINVAL;
 		e->irqchip.pin = ue->u.irqchip.pin;
 		switch (ue->u.irqchip.irqchip) {
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 		case KVM_IRQCHIP_PIC_SLAVE:
 			e->irqchip.pin += PIC_NUM_PINS / 2;
 			fallthrough;
@@ -300,6 +305,7 @@ int kvm_set_routing_entry(struct kvm *kvm,
 				return -EINVAL;
 			e->set = kvm_set_ioapic_irq;
 			break;
+#endif /* CONFIG_KVM_LEGACY_IRQCHIP */
 		default:
 			return -EINVAL;
 		}

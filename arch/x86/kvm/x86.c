@@ -6118,6 +6118,7 @@ static int kvm_vm_ioctl_set_nr_mmu_pages(struct kvm *kvm,
 	return 0;
 }
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 static int kvm_vm_ioctl_get_irqchip(struct kvm *kvm, struct kvm_irqchip *chip)
 {
 	struct kvm_pic *pic = kvm->arch.vpic;
@@ -6172,8 +6173,6 @@ static int kvm_vm_ioctl_set_irqchip(struct kvm *kvm, struct kvm_irqchip *chip)
 	kvm_pic_update_irq(pic);
 	return r;
 }
-
-#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 
 static int kvm_vm_ioctl_get_pit(struct kvm *kvm, struct kvm_pit_state *ps)
 {
@@ -6808,6 +6807,7 @@ set_identity_unlock:
 	case KVM_SET_NR_MMU_PAGES:
 		r = kvm_vm_ioctl_set_nr_mmu_pages(kvm, arg);
 		break;
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	case KVM_CREATE_IRQCHIP: {
 		mutex_lock(&kvm->lock);
 
@@ -6843,7 +6843,6 @@ set_identity_unlock:
 		mutex_unlock(&kvm->lock);
 		break;
 	}
-#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	case KVM_CREATE_PIT:
 		u.pit_config.flags = KVM_PIT_SPEAKER_DUMMY;
 		goto create_pit;
@@ -6864,7 +6863,6 @@ set_identity_unlock:
 	create_pit_unlock:
 		mutex_unlock(&kvm->lock);
 		break;
-#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
 	case KVM_GET_IRQCHIP: {
 		/* 0: PIC master, 1: PIC slave, 2: IOAPIC */
 		struct kvm_irqchip *chip;
@@ -6907,7 +6905,6 @@ set_identity_unlock:
 		kfree(chip);
 		break;
 	}
-#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	case KVM_GET_PIT: {
 		r = -EFAULT;
 		if (copy_from_user(&u.ps, argp, sizeof(struct kvm_pit_state)))
