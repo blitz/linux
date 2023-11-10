@@ -306,13 +306,6 @@ void kvm_ioapic_scan_entry(struct kvm_vcpu *vcpu, ulong *ioapic_handled_vectors)
 	spin_unlock(&ioapic->lock);
 }
 
-void kvm_arch_post_irq_ack_notifier_list_update(struct kvm *kvm)
-{
-	if (!ioapic_in_kernel(kvm))
-		return;
-	kvm_make_scan_ioapic_request(kvm);
-}
-
 static void ioapic_write_indirect(struct kvm_ioapic *ioapic, u32 val)
 {
 	unsigned index;

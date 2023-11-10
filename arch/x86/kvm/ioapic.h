@@ -101,6 +101,10 @@ do {									\
 #define ASSERT(x) do { } while (0)
 #endif
 
+void kvm_scan_ioapic_routes(struct kvm_vcpu *vcpu,
+			    ulong *ioapic_handled_vectors);
+
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 static inline int ioapic_in_kernel(struct kvm *kvm)
 {
 	return irqchip_kernel(kvm);
@@ -118,6 +122,16 @@ void kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
 void kvm_set_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
 void kvm_ioapic_scan_entry(struct kvm_vcpu *vcpu,
 			   ulong *ioapic_handled_vectors);
-void kvm_scan_ioapic_routes(struct kvm_vcpu *vcpu,
-			    ulong *ioapic_handled_vectors);
+#else
+
+static inline int ioapic_in_kernel(struct kvm *kvm) { return false; }
+static inline void kvm_ioapic_update_eoi(struct kvm_vcpu *vcpu, int vector,
+                                         int trigger_mode) {}
+static inline void kvm_ioapic_destroy(struct kvm *kvm) {}
+static inline void kvm_rtc_eoi_tracking_restore_one(struct kvm_vcpu *vcpu) {}
+static inline void kvm_ioapic_scan_entry(struct kvm_vcpu *vcpu,
+                                         ulong *ioapic_handled_vectors) {}
+
+#endif /* CONFIG_KVM_LEGACY_IRQCHIP */
+
 #endif

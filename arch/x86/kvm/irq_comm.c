@@ -232,7 +232,9 @@ void kvm_free_irq_source_id(struct kvm *kvm, int irq_source_id)
 	if (!irqchip_kernel(kvm))
 		goto unlock;
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
 	kvm_ioapic_clear_all(kvm->arch.vioapic, irq_source_id);
+#endif
 	kvm_pic_clear_all(kvm->arch.vpic, irq_source_id);
 unlock:
 	mutex_unlock(&kvm->irq_lock);
@@ -445,4 +447,11 @@ void kvm_scan_ioapic_routes(struct kvm_vcpu *vcpu,
 void kvm_arch_irq_routing_update(struct kvm *kvm)
 {
 	kvm_hv_irq_routing_update(kvm);
+}
+
+void kvm_arch_post_irq_ack_notifier_list_update(struct kvm *kvm)
+{
+	if (!ioapic_in_kernel(kvm))
+		return;
+	kvm_make_scan_ioapic_request(kvm);
 }
