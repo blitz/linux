@@ -59,10 +59,32 @@ struct kvm_pic {
 	unsigned long irq_states[PIC_NUM_PINS];
 };
 
+#ifdef CONFIG_KVM_LEGACY_IRQCHIP
+
 int kvm_pic_init(struct kvm *kvm);
 void kvm_pic_destroy(struct kvm *kvm);
 int kvm_pic_read_irq(struct kvm *kvm);
 void kvm_pic_update_irq(struct kvm_pic *s);
+
+static inline int pic_in_kernel(struct kvm *kvm)
+{
+	return irqchip_kernel(kvm);
+}
+
+#else
+
+static inline void kvm_pic_destroy(struct kvm *kvm) {}
+static inline int kvm_pic_read_irq(struct kvm *kvm)
+{
+	/* Spurius IRQ. But we should never reach this code anyhow. */
+	return 7;
+}
+
+
+static inline int pic_in_kernel(struct kvm *kvm) { return false; }
+
+#endif  /* CONFIG_KVM_LEGACY_IRQCHIP */
+
 
 static inline int irqchip_split(struct kvm *kvm)
 {
@@ -80,11 +102,6 @@ static inline int irqchip_kernel(struct kvm *kvm)
 	/* Matches smp_wmb() when setting irqchip_mode */
 	smp_rmb();
 	return mode == KVM_IRQCHIP_KERNEL;
-}
-
-static inline int pic_in_kernel(struct kvm *kvm)
-{
-	return irqchip_kernel(kvm);
 }
 
 static inline int irqchip_in_kernel(struct kvm *kvm)

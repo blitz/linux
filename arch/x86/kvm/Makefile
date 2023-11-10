@@ -9,7 +9,7 @@ endif
 
 include $(srctree)/virt/kvm/Makefile.kvm
 
-kvm-y			+= x86.o emulate.o i8259.o irq.o lapic.o \
+kvm-y			+= x86.o emulate.o irq.o lapic.o \
 			   irq_comm.o cpuid.o pmu.o mtrr.o \
 			   hyperv.o debugfs.o mmu/mmu.o mmu/page_track.o \
 			   mmu/spte.o
@@ -17,6 +17,7 @@ kvm-y			+= x86.o emulate.o i8259.o irq.o lapic.o \
 ifdef CONFIG_KVM_LEGACY_IRQCHIP
 kvm-y			+= i8254.o
 kvm-y			+= ioapic.o
+kvm-y			+= i8259.o
 endif
 
 ifdef CONFIG_HYPERV
