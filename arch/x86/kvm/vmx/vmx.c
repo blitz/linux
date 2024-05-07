@@ -6606,6 +6606,14 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 	int ret = __vmx_handle_exit(vcpu, exit_fastpath);
 
 	/*
+	 * Tell the VMM whether this is a nested or a regular exit.
+	 */
+	if (is_guest_mode(vcpu))
+		vcpu->run->flags |= KVM_RUN_X86_GUEST_MODE;
+	else
+		vcpu->run->flags &= ~KVM_RUN_X86_GUEST_MODE;
+
+	/*
 	 * Exit to user space when bus lock detected to inform that there is
 	 * a bus lock in guest.
 	 */

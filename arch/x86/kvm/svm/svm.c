@@ -3511,7 +3511,12 @@ static int svm_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 
 		if (vmexit == NESTED_EXIT_DONE)
 			return 1;
+
+		vcpu->run->flags |= KVM_RUN_X86_GUEST_MODE;
+	} else {
+		vcpu->run->flags &= ~KVM_RUN_X86_GUEST_MODE;
 	}
+
 
 	if (svm->vmcb->control.exit_code == SVM_EXIT_ERR) {
 		kvm_run->exit_reason = KVM_EXIT_FAIL_ENTRY;
